@@ -1,0 +1,362 @@
+import json
+import os
+
+# ==============================
+# FILE NAMES
+# ==============================
+
+BOOK_FILE = "books.json"
+MEMBER_FILE = "members.json"
+ISSUE_FILE = "issues.json"
+
+
+# ==============================
+# LOAD DATA
+# ==============================
+
+def load_data(filename):
+    try:
+        if os.path.exists(filename):
+            with open(filename, "r") as file:
+                return json.load(file)
+        return []
+    except (json.JSONDecodeError, OSError):
+        print("Warning: Could not read", filename)
+        return []
+
+
+# ==============================
+# SAVE DATA
+# ==============================
+
+def save_data(filename, data):
+    try:
+        with open(filename, "w") as file:
+            json.dump(data, file, indent=4)
+        return True
+    except OSError:
+        print("Error: Could not save data.")
+        return False
+
+
+# ==============================
+# LOAD ALL DATA
+# ==============================
+
+books = load_data(BOOK_FILE)
+members = load_data(MEMBER_FILE)
+issues = load_data(ISSUE_FILE)
+
+
+# ==============================
+# ADD BOOK
+# ==============================
+
+def add_book():
+    try:
+        book_id = input("Enter Book ID: ").strip()
+        title = input("Enter Book Title: ").strip()
+        author = input("Enter Author Name: ").strip()
+
+        if not book_id or not title or not author:
+            print("All fields are required.")
+            return
+
+        for book in books:
+            if book["id"] == book_id:
+                print("Book ID already exists.")
+                return
+
+        books.append({
+            "id": book_id,
+            "title": title,
+            "author": author,
+            "available": True
+        })
+
+        save_data(BOOK_FILE, books)
+        print("Book added successfully!")
+
+    except Exception as e:
+        print("Error:", e)
+
+
+# ==============================
+# VIEW BOOKS
+# ==============================
+
+def view_books():
+    if not books:
+        print("No books available.")
+        return
+
+    print("\n----- BOOK LIST -----")
+
+    for book in books:
+        if book["available"]:
+            status = "Available"
+        else:
+            status = "Issued"
+
+        print("Book ID :", book["id"])
+        print("Title   :", book["title"])
+        print("Author  :", book["author"])
+        print("Status  :", status)
+        print("---------------------")
+
+
+# ==============================
+# SEARCH BOOK
+# ==============================
+
+def search_book():
+    search = input("Enter Book Title: ").strip().lower()
+
+    if not search:
+        print("Please enter a book title.")
+        return
+
+    found = False
+
+    for book in books:
+        if search in book["title"].lower():
+            print("\nBook Found")
+            print("Book ID :", book["id"])
+            print("Title   :", book["title"])
+            print("Author  :", book["author"])
+
+            if book["available"]:
+                print("Status  : Available")
+            else:
+                print("Status  : Issued")
+
+            found = True
+
+    if not found:
+        print("Book not found.")
+
+
+# ==============================
+# DELETE BOOK
+# ==============================
+
+def delete_book():
+    book_id = input("Enter Book ID to delete: ").strip()
+
+    for book in books:
+        if book["id"] == book_id:
+
+            if not book["available"]:
+                print("Cannot delete an issued book.")
+                return
+
+            books.remove(book)
+            save_data(BOOK_FILE, books)
+
+            print("Book deleted successfully!")
+            return
+
+    print("Book ID not found.")
+
+
+# ==============================
+# ADD MEMBER
+# ==============================
+
+def add_member():
+    try:
+        member_id = input("Enter Member ID: ").strip()
+        member_name = input("Enter Member Name: ").strip()
+
+        if not member_id or not member_name:
+            print("All fields are required.")
+            return
+
+        for member in members:
+            if member["id"] == member_id:
+                print("Member ID already exists.")
+                return
+
+        members.append({
+            "id": member_id,
+            "name": member_name
+        })
+
+        save_data(MEMBER_FILE, members)
+
+        print("Member added successfully!")
+
+    except Exception as e:
+        print("Error:", e)
+
+
+# ==============================
+# VIEW MEMBERS
+# ==============================
+
+def view_members():
+    if not members:
+        print("No members available.")
+        return
+
+    print("\n----- MEMBER LIST -----")
+
+    for member in members:
+        print("Member ID :", member["id"])
+        print("Name      :", member["name"])
+        print("-----------------------")
+
+
+# ==============================
+# ISSUE BOOK
+# ==============================
+
+def issue_book():
+
+    book_id = input("Enter Book ID: ").strip()
+    member_id = input("Enter Member ID: ").strip()
+
+    selected_book = None
+    selected_member = None
+
+    # Find book
+    for book in books:
+        if book["id"] == book_id:
+            selected_book = book
+            break
+
+    if selected_book is None:
+        print("Book ID not found.")
+        return
+
+    # Check availability
+    if not selected_book["available"]:
+        print("Book is already issued.")
+        return
+
+    # Find member
+    for member in members:
+        if member["id"] == member_id:
+            selected_member = member
+            break
+
+    if selected_member is None:
+        print("Member ID not found.")
+        return
+
+    # Change book status
+    selected_book["available"] = False
+
+    # Save issue record
+    issues.append({
+        "book_id": book_id,
+        "member_id": member_id
+    })
+
+    save_data(BOOK_FILE, books)
+    save_data(ISSUE_FILE, issues)
+
+    print("Book issued successfully!")
+
+
+# ==============================
+# RETURN BOOK
+# ==============================
+
+def return_book():
+
+    book_id = input("Enter Book ID to return: ").strip()
+
+    selected_book = None
+
+    for book in books:
+        if book["id"] == book_id:
+            selected_book = book
+            break
+
+    if selected_book is None:
+        print("Book ID not found.")
+        return
+
+    if selected_book["available"]:
+        print("This book is already available.")
+        return
+
+    found_issue = False
+
+    for issue in issues:
+        if issue["book_id"] == book_id:
+
+            issues.remove(issue)
+            found_issue = True
+            break
+
+    if found_issue:
+        selected_book["available"] = True
+
+        save_data(BOOK_FILE, books)
+        save_data(ISSUE_FILE, issues)
+
+        print("Book returned successfully!")
+    else:
+        print("Issue record not found.")
+
+
+# ==============================
+# MAIN MENU
+# ==============================
+
+while True:
+
+    print("\n==============================================")
+    print("        LIBRARY MANAGEMENT SYSTEM")
+    print("==============================================")
+
+    print("1. Add Book")
+    print("2. View Books")
+    print("3. Search Book")
+    print("4. Delete Book")
+    print("5. Add Member")
+    print("6. View Members")
+    print("7. Issue Book")
+    print("8. Return Book")
+    print("9. Exit")
+
+    choice = input("Enter your choice: ").strip()
+
+    try:
+
+        if choice == "1":
+            add_book()
+
+        elif choice == "2":
+            view_books()
+
+        elif choice == "3":
+            search_book()
+
+        elif choice == "4":
+            delete_book()
+
+        elif choice == "5":
+            add_member()
+
+        elif choice == "6":
+            view_members()
+
+        elif choice == "7":
+            issue_book()
+
+        elif choice == "8":
+            return_book()
+
+        elif choice == "9":
+            print("\nThank you for using")
+            print("Library Management System!")
+            break
+
+        else:
+            print("Invalid choice. Please enter 1 to 9.")
+
+    except Exception as e:
+        print("Something went wrong:", e)
